@@ -20,10 +20,12 @@ NUM_CLASSES = 10
 
 WIDTH, HEIGHT = 640 // DOWNSAMPLE, 480 // DOWNSAMPLE
 
+
 def load_image(path):
     img = imread(path)
     img = imresize(img, (HEIGHT, WIDTH))
     return img
+
 
 def load_train(base):
     driver_imgs_list = pd.read_csv('driver_imgs_list.csv')
@@ -63,6 +65,7 @@ def load_train(base):
 
     return X_train, y_train, driver_ids
 
+
 def load_test(base):
     X_test = []
     X_test_id = []
@@ -84,6 +87,7 @@ def load_test(base):
     X_test_id = np.array(X_test_id)
 
     return X_test, X_test_id
+
 
 X_train, y_train, driver_ids = load_train('imgs/train/')
 X_test, X_test_ids = load_test('imgs/test/')
