@@ -18,7 +18,7 @@ from sklearn.cross_validation import LabelShuffleSplit
 
 from utilities import write_submission, calc_geom, calc_geom_arr, mkdirp
 
-TESTING = False
+TESTING = True
 
 DATASET_PATH = os.environ.get('DATASET_PATH', 'dataset/data_20.pkl' if not TESTING else 'dataset/data_20_subset.pkl')
 
@@ -30,8 +30,8 @@ mkdirp(CHECKPOINT_PATH)
 mkdirp(SUMMARY_PATH)
 mkdirp(MODEL_PATH)
 
-NB_EPOCHS = 5 if not TESTING else 1
-MAX_FOLDS = 3
+NB_EPOCHS = 20 if not TESTING else 1
+MAX_FOLDS = 8
 DOWNSAMPLE = 20
 
 WIDTH, HEIGHT, NB_CHANNELS = 640 // DOWNSAMPLE, 480 // DOWNSAMPLE, 3
@@ -39,15 +39,18 @@ BATCH_SIZE = 50
 
 with open(DATASET_PATH, 'rb') as f:
     X_train_raw, y_train_raw, X_test, X_test_ids, driver_ids = pickle.load(f)
+
 _, driver_indices = np.unique(np.array(driver_ids), return_inverse=True)
 
-predictions_total = [] # accumulated predictions from each fold
-scores_total = [] # accumulated scores from each fold
+predictions_total = []  # accumulated predictions from each fold
+scores_total = []  # accumulated scores from each fold
 num_folds = 0
+
 
 def vgg_bn():
     model = Sequential()
-    model.add(Convolution2D(32, 3, 3, border_mode='same', init='he_normal', input_shape=(NB_CHANNELS, WIDTH, HEIGHT)))
+    model.add(Convolution2D(32, 3, 3, border_mode='same', init='he_normal',
+                            input_shape=(NB_CHANNELS, WIDTH, HEIGHT)))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(Convolution2D(32, 3, 3, border_mode='same', init='he_normal'))
@@ -72,7 +75,9 @@ def vgg_bn():
     model.compile(Adam(lr=1e-3), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
-for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOLDS, test_size=0.2, random_state=67):
+
+for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOLDS,
+                                                  test_size=0.2, random_state=67):
     print('Fold {}/{}'.format(num_folds + 1, MAX_FOLDS))
 
     # skip fold if a checkpoint exists for the next one
@@ -81,8 +86,8 @@ for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOL
     #     print('Checkpoint exists for next fold, skipping current fold.')
     #     continue
 
-    X_train, y_train = X_train_raw[train_index,...], y_train_raw[train_index,...]
-    X_valid, y_valid = X_train_raw[valid_index,...], y_train_raw[valid_index,...]
+    X_train, y_train = X_train_raw[train_index, ...], y_train_raw[train_index, ...]
+    X_valid, y_valid = X_train_raw[valid_index, ...], y_train_raw[valid_index, ...]
 
     model = vgg_bn()
 
@@ -99,17 +104,14 @@ for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOL
     summary_path = os.path.join(SUMMARY_PATH, 'model_{}'.format(num_folds))
     mkdirp(summary_path)
 
-    callbacks = [
-        EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='auto'),
-        ModelCheckpoint(checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True, mode='auto'),
-        TensorBoard(log_dir=summary_path, histogram_freq=0)
-    ]
-    model.fit(X_train, y_train, \
-            batch_size=BATCH_SIZE, nb_epoch=NB_EPOCHS, \
-            shuffle=True, \
-            verbose=1, \
-            validation_data=(X_valid, y_valid), \
-            callbacks=callbacks)
+    callbacks = [EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='auto'),
+                 ModelCheckpoint(checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True, mode='auto'),
+                 TensorBoard(log_dir=summary_path, histogram_freq=0)]
+    model.fit(X_train, y_train, batch_size=BATCH_SIZE, nb_epoch=NB_EPOCHS,
+              shuffle=True,
+              verbose=1,
+              validation_data=(X_valid, y_valid),
+              callbacks=callbacks)
 
     predictions_valid = model.predict(X_valid, batch_size=100, verbose=1)
     score_valid = log_loss(y_valid, predictions_valid)
