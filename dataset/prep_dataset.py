@@ -14,7 +14,7 @@ from sklearn.preprocessing import OneHotEncoder
 from skimage.io import imread, imsave
 from scipy.misc import imresize
 
-SUBSET = False
+SUBSET = True
 DOWNSAMPLE = 20
 NUM_CLASSES = 10
 
