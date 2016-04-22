@@ -12,6 +12,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras.layers.core import Dense, Activation, Flatten, Dropout
 from keras.layers.convolutional import Convolution2D
 from keras.layers.normalization import BatchNormalization
+from keras.layers import merge
 
 from sklearn.metrics import log_loss
 from sklearn.cross_validation import LabelShuffleSplit
