@@ -48,15 +48,10 @@ def load_train(base):
         driver_ids += driver_ids_group['subject'].tolist()
 
         for i, path in tqdm(enumerate(paths), total=len(paths)):
-            img = load_image(path)
-            if i == 0:
-                imsave('c{}.jpg'.format(j), img)
-            img = img.swapaxes(2, 0)
-
-            X_train.append(img)
+            X_train.append(path)
             y_train.append(j)
 
-    X_train = np.array(X_train)
+    # X_train = np.array(X_train)
     y_train = np.array(y_train)
 
     y_train = OneHotEncoder(n_values=NUM_CLASSES) \
@@ -93,9 +88,9 @@ X_train, y_train, driver_ids = load_train('imgs/train/')
 X_test, X_test_ids = load_test('imgs/test/')
 
 if SUBSET:
-    dest = 'data_{}_subset.pkl'.format(DOWNSAMPLE)
+    dest = 'data_files_subset.pkl'
 else:
-    dest = 'data_{}.pkl'.format(DOWNSAMPLE)
+    dest = 'data_files.pkl'
 
 with open(dest, 'wb') as f:
     pickle.dump((X_train, y_train, X_test, X_test_ids, driver_ids), f)

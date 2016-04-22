@@ -1,18 +1,18 @@
 import numpy as np
 import random
+from scipy import misc
 
 try:
     import cv2
     OPEN_CV = True
 except ImportError:
-    from scipy import misc
     OPEN_CV = False
 
 
 def load_image(imfile):
     if OPEN_CV:
         img = cv2.imread(filename=imfile)
-        img = img[::-1]
+        img = img[:, :, ::-1]
     else:
         img = misc.imread(imfile)
 
@@ -37,7 +37,7 @@ def resnet_image_processing(file_path):
     with deep convolutional neural networks. In NIPS, 2012.
     """
 
-    img = misc.imread(file_path)
+    img = load_image(file_path)
     (height, width, channels) = img.shape
 
     # Resize the image with so that shorter side is between 256-480
@@ -63,25 +63,22 @@ def graph_train_generator(im_files, augment_data=True):
         images_tensor = np.stack(images_tensor)
 
         # Reshape tensor into Theano format
-        images_tensor = images_tensor.reshape(batch_size, 3, CROP_SIZE[0], CROP_SIZE[1])
+        images_tensor = images_tensor.reshape(-1, 3, CROP_SIZE[0], CROP_SIZE[1])
         images_tensor = images_tensor.astype('float32')
-        images_tensor -= self.im_mean
 
-        yield {'input': images_tensor, 'output': self.get_target_labels(im_files)}
+        # Subtract mean on a per-batch basis
+        images_tensor -= images_tensor.mean()
 
-def test_image_generator(im_files, batch_size=30):
-    """Read in the test images and yield a test dict."""
-    for im_selection in grouper(im_files, batch_size):
-        # Load images into a list
-        images_tensor = [self.resnet_image_processing(im_file) for im_file in im_selection]
-        photo_ids = [int(path_id.stem) for path_id in im_selection]
+        yield images_tensor
 
-        # Convert list into a tensor
-        images_tensor = np.stack(images_tensor)
 
-        # Reshape tensor into Theano format
-        images_tensor = images_tensor.reshape(batch_size, 3, CROP_SIZE[0], CROP_SIZE[1])
-        images_tensor = images_tensor.astype('float32')
-        images_tensor -= self.im_mean
+if __name__ == '__main__':
+    import os
+    from scipy import misc
+    import cv2
 
-        yield {'input': images_tensor}, photo_ids
+    imfile = os.path.join('dataset', 'c0.jpg')
+    img = misc.imread(imfile)
+
+    img2 = cv2.imread(imfile, cv2.IMREAD_COLOR)
+

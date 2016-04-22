@@ -19,9 +19,10 @@ from sklearn.cross_validation import LabelShuffleSplit
 
 from utilities import write_submission, calc_geom, calc_geom_arr, mkdirp
 
-TESTING = True
+TESTING = False
 
-DATASET_PATH = os.environ.get('DATASET_PATH', 'dataset/data_20.pkl' if not TESTING else 'dataset/data_20_subset.pkl')
+DATASET_PATH = os.environ.get('DATASET_PATH',
+                              'dataset/data_files.pkl' if not TESTING else 'dataset/data_files_subset.pkl')
 
 CHECKPOINT_PATH = os.environ.get('CHECKPOINT_PATH', 'checkpoints/')
 SUMMARY_PATH = os.environ.get('SUMMARY_PATH', 'summaries/')
