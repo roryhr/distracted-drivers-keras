@@ -12,17 +12,18 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras.layers.core import Dense, Activation, Flatten, Dropout
 from keras.layers.convolutional import Convolution2D
 from keras.layers.normalization import BatchNormalization
-from keras.layers import merge
 
 from sklearn.metrics import log_loss
 from sklearn.cross_validation import LabelShuffleSplit
+
+from distracted_drivers_data import train_generator, validation_generator, test_generator
 
 from utilities import write_submission, calc_geom, calc_geom_arr, mkdirp
 
 TESTING = False
 
 DATASET_PATH = os.environ.get('DATASET_PATH',
-                              'dataset/data_files.pkl' if not TESTING else 'dataset/data_files_subset.pkl')
+                              'data_files.pkl' if not TESTING else 'dataset/data_files_subset.pkl')
 
 CHECKPOINT_PATH = os.environ.get('CHECKPOINT_PATH', 'checkpoints/')
 SUMMARY_PATH = os.environ.get('SUMMARY_PATH', 'summaries/')
@@ -32,8 +33,8 @@ mkdirp(CHECKPOINT_PATH)
 mkdirp(SUMMARY_PATH)
 mkdirp(MODEL_PATH)
 
-NB_EPOCHS = 20 if not TESTING else 1
-MAX_FOLDS = 8
+NB_EPOCHS = 3 if not TESTING else 1
+MAX_FOLDS = 2
 DOWNSAMPLE = 20
 
 WIDTH, HEIGHT, NB_CHANNELS = 640 // DOWNSAMPLE, 480 // DOWNSAMPLE, 3
@@ -88,8 +89,8 @@ for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOL
     #     print('Checkpoint exists for next fold, skipping current fold.')
     #     continue
 
-    X_train, y_train = X_train_raw[train_index, ...], y_train_raw[train_index, ...]
-    X_valid, y_valid = X_train_raw[valid_index, ...], y_train_raw[valid_index, ...]
+    X_train, y_train = X_train_raw[train_index], y_train_raw[train_index, ...]
+    X_valid, y_valid = X_train_raw[valid_index], y_train_raw[valid_index, ...]
 
     model = vgg_bn()
 
@@ -107,21 +108,35 @@ for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOL
     mkdirp(summary_path)
 
     callbacks = [EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='auto'),
-                 ModelCheckpoint(checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True, mode='auto'),
+                 ModelCheckpoint(checkpoint_path, monitor='val_loss', verbose=0,
+                                 save_best_only=True,
+                                 mode='auto'),
                  TensorBoard(log_dir=summary_path, histogram_freq=0)]
-    model.fit(X_train, y_train, batch_size=BATCH_SIZE, nb_epoch=NB_EPOCHS,
-              shuffle=True,
-              verbose=1,
-              validation_data=(X_valid, y_valid),
-              callbacks=callbacks)
 
-    predictions_valid = model.predict(X_valid, batch_size=100, verbose=1)
+    tr_generator = train_generator(im_files=X_train, y_train=y_train, batch_size=50)
+    val_generator = validation_generator(im_files=X_valid, y_valid=y_train, batch_size=50)
+
+    model.fit_generator(generator=tr_generator,
+                        samples_per_epoch=1000,
+                        nb_epoch=NB_EPOCHS,
+                        verbose=1,
+                        validation_data=val_generator,
+                        nb_val_samples=len(X_valid),
+                        callbacks=callbacks)
+
+    prediction_generator = validation_generator(im_files=X_valid, y_valid=y_valid,
+                                                batch_size=100)
+
+    predictions_valid = model.predict_generator(generator=prediction_generator,
+                                                val_samples=len(X_valid))
+
     score_valid = log_loss(y_valid, predictions_valid)
     scores_total.append(score_valid)
 
     print('Score: {}'.format(score_valid))
 
-    predictions_test = model.predict(X_test, batch_size=100, verbose=1)
+    predictions_test = model.predict_generator(test_generator(X_valid, batch_size=100),
+                                               val_samples=len(X_test))
     predictions_total.append(predictions_test)
 
     num_folds += 1
