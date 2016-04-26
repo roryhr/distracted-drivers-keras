@@ -2,8 +2,8 @@ import numpy as np
 import random
 from scipy import misc
 
-# import cv2
-OPEN_CV = False
+#import cv2
+#OPEN_CV = False
 # RESIZE_SIZE = (256, 480)    # Shorter side length of resized image
 RESIZE_SIZE = (40, 50)    # Shorter side length of resized image
 CROP_SIZE = (32, 24)      # Size of final image passed into convolution network
@@ -51,6 +51,7 @@ def resnet_image_processing(file_path):
 
     # img = load_image(file_path)
     img = misc.imread(file_path)
+#    img = cv2.imread(file_path)
     (height, width, channels) = img.shape
 
     # Resize the image with so that shorter side is between 256-480
@@ -71,28 +72,8 @@ def resnet_image_processing(file_path):
 def train_generator(im_files, y_train, batch_size=50):
     """Read in the images and yield a training tuple."""
     while True:
-        index_selection = random.sample(range(len(im_files)), batch_size)
-        im_selection, y_train_selection = im_files[index_selection], y_train[index_selection]
-
-        images_tensor = [resnet_image_processing(im_file) for im_file in im_selection]
-
-        # Convert list into a tensor
-        images_tensor = np.stack(images_tensor)
-
-        # Reshape tensor into Theano format
-        images_tensor = images_tensor.reshape(-1, 3, CROP_SIZE[0], CROP_SIZE[1])
-        images_tensor = images_tensor.astype('float32')
-
-        # Subtract mean on a per-batch basis
-        images_tensor -= images_tensor.mean()
-
-        yield (images_tensor, y_train_selection)
-
-
-def validation_generator(im_files, y_valid, batch_size=50):
-    # TODO: zip im_files, y_train
-    for index_selection in grouper(range(len(im_files)), batch_size):
-        im_selection, y_train_selection = im_files[index_selection], y_valid[index_selection]
+        ind_selection = random.sample(range(len(im_files)), batch_size)
+        im_selection, y_train_selection = im_files[ind_selection], y_train[ind_selection]
 
         images_tensor = [resnet_image_processing(im_file) for im_file in im_selection]
 
@@ -102,7 +83,24 @@ def validation_generator(im_files, y_valid, batch_size=50):
         # Subtract mean on a per-batch basis
         images_tensor -= images_tensor.mean()
 
-        yield (images_tensor, y_valid)
+        yield (images_tensor, y_train_selection)
+
+
+def validation_generator(im_files, y_valid, batch_size=50):
+    # TODO: zip im_files, y_train
+    for index_selection in grouper(list(range(len(im_files))), batch_size):
+        print(index_selection)
+        im_selection, y_valid_selection = im_files[index_selection], y_valid[index_selection]
+
+        images_tensor = [resnet_image_processing(im_file) for im_file in im_selection]
+
+        # Convert list into a tensor
+        images_tensor = list_to_tensor(images_tensor)
+
+        # Subtract mean on a per-batch basis
+        images_tensor -= images_tensor.mean()
+
+        yield (images_tensor, y_valid_selection)
 
 
 def test_generator(im_files, batch_size=50):
@@ -127,17 +125,15 @@ if __name__ == '__main__':
     #
     # img2 = cv2.imread(imfile, cv2.IMREAD_COLOR)
 
-    train_index = valid_index = [160, 161, 162, 5]
+    train_index = valid_index = list(range(109))
     with open('data_files.pkl', 'rb') as f:
         X_train_raw, y_train_raw, X_test, X_test_ids, driver_ids = pickle.load(f)
 
     X_train, y_train = X_train_raw[train_index], y_train_raw[train_index, ...]
     X_valid, y_valid = X_train_raw[valid_index], y_train_raw[valid_index, ...]
 
-    tr_generator = train_generator(im_files=X_train, y_train=y_train, batch_size=2)
-    val_generator = validation_generator(im_files=X_valid, y_valid=y_train, batch_size=2)
+    tr_generator = test_generator(im_files=X_train, batch_size=50)
+    # val_generator = validation_generator(im_files=X_valid, y_valid=y_train, batch_size=50)
 
-    x, y = next(tr_generator)
-    x2, y2 = next(val_generator)
-
-    print(x)
+    for _ in range(3):
+        x2 = next(tr_generator)

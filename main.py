@@ -113,29 +113,30 @@ for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOL
                                  mode='auto'),
                  TensorBoard(log_dir=summary_path, histogram_freq=0)]
 
-    tr_generator = train_generator(im_files=X_train, y_train=y_train, batch_size=50)
-    val_generator = validation_generator(im_files=X_valid, y_valid=y_train, batch_size=50)
+    # tr_generator = train_generator(im_files=X_train, y_train=y_train, batch_size=50)
+    # val_generator = validation_generator(im_files=X_valid, y_valid=y_train, batch_size=50)
 
-    model.fit_generator(generator=tr_generator,
+    model.fit_generator(generator=train_generator(im_files=X_train, y_train=y_train,
+                                                  batch_size=50),
                         samples_per_epoch=1000,
                         nb_epoch=NB_EPOCHS,
-                        verbose=1,
-                        validation_data=val_generator,
-                        nb_val_samples=len(X_valid),
-                        callbacks=callbacks)
+                        verbose=1)
+                        # validation_data=val_generator,
+                        # nb_val_samples=len(X_valid),
+                        # callbacks=callbacks)
 
-    prediction_generator = validation_generator(im_files=X_valid, y_valid=y_valid,
-                                                batch_size=100)
-
-    predictions_valid = model.predict_generator(generator=prediction_generator,
-                                                val_samples=len(X_valid))
+    prediction_generator = test_generator(im_files=X_valid, batch_size=100)
+    
+    predictions_valid = []
+    for x in prediction_generator:
+        predictions_valid = model.predict(x)
 
     score_valid = log_loss(y_valid, predictions_valid)
     scores_total.append(score_valid)
 
     print('Score: {}'.format(score_valid))
 
-    predictions_test = model.predict_generator(test_generator(X_valid, batch_size=100),
+    predictions_test = model.predict_generator(test_generator(X_test, batch_size=100),
                                                val_samples=len(X_test))
     predictions_total.append(predictions_test)
 
