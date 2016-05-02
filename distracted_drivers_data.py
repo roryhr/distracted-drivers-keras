@@ -1,7 +1,7 @@
 import numpy as np
 import random
 from scipy import misc
-
+from joblib import Parallel, delayed
 #import cv2
 #OPEN_CV = False
 # RESIZE_SIZE = (256, 480)    # Shorter side length of resized image
@@ -106,8 +106,12 @@ def validation_generator(im_files, y_valid, batch_size=50):
 def test_generator(im_files, batch_size=50):
     for im_selection in grouper(im_files, batch_size):
         images_tensor = [resnet_image_processing(im_file) for im_file in im_selection]
+        
+        train_images = Parallel(n_jobs=2)(delayed(resnet_image_processing)
+                                         (im_file) for im_file in im_selection)
+                                         
         images_tensor = list_to_tensor(images_tensor)
-
+        
         # Subtract mean on a per-batch basis
         images_tensor -= images_tensor.mean()
 

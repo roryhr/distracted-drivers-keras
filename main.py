@@ -33,7 +33,7 @@ mkdirp(CHECKPOINT_PATH)
 mkdirp(SUMMARY_PATH)
 mkdirp(MODEL_PATH)
 
-NB_EPOCHS = 3 if not TESTING else 1
+NB_EPOCHS = 5 if not TESTING else 1
 MAX_FOLDS = 2
 DOWNSAMPLE = 20
 
@@ -118,7 +118,7 @@ for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOL
 
     model.fit_generator(generator=train_generator(im_files=X_train, y_train=y_train,
                                                   batch_size=50),
-                        samples_per_epoch=1000,
+                        samples_per_epoch=20000,
                         nb_epoch=NB_EPOCHS,
                         verbose=1)
                         # validation_data=val_generator,
@@ -129,15 +129,17 @@ for train_index, valid_index in LabelShuffleSplit(driver_indices, n_iter=MAX_FOL
     
     predictions_valid = []
     for x in prediction_generator:
-        predictions_valid = model.predict(x)
+        predictions_valid.extend(model.predict(x))
 
     score_valid = log_loss(y_valid, predictions_valid)
     scores_total.append(score_valid)
 
     print('Score: {}'.format(score_valid))
 
-    predictions_test = model.predict_generator(test_generator(X_test, batch_size=100),
-                                               val_samples=len(X_test))
+    predictions_test = []
+    for x in test_generator(X_test, batch_size=20000):
+        predictions_test.extend(model.predict(x))
+        
     predictions_total.append(predictions_test)
 
     num_folds += 1
